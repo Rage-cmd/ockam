@@ -4,7 +4,7 @@ use ockam_vault::VaultForVerifyingSignatures;
 
 use crate::models::{Identifier, PurposeKeyAttestation, PurposeKeyAttestationData};
 use crate::utils::now;
-use crate::{IdentitiesReader, Identity, IdentityError, TimestampInSeconds};
+use crate::{ChangeHistoryRepository, Identity, IdentityError, TimestampInSeconds};
 
 /// We allow purpose keys to be created in the future related to this machine's time due to
 /// possible time dyssynchronization
@@ -14,14 +14,14 @@ const MAX_ALLOWED_TIME_DRIFT: TimestampInSeconds = TimestampInSeconds(5);
 #[derive(Clone)]
 pub struct PurposeKeyVerification {
     verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
-    identities_reader: Arc<dyn IdentitiesReader>,
+    identities_reader: Arc<dyn ChangeHistoryRepository>,
 }
 
 impl PurposeKeyVerification {
     /// Create a new identities module
     pub(crate) fn new(
         verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
-        identities_reader: Arc<dyn IdentitiesReader>,
+        identities_reader: Arc<dyn ChangeHistoryRepository>,
     ) -> Self {
         Self {
             verifying_vault,

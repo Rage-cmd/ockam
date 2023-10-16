@@ -2,8 +2,8 @@ use crate::identities::AttributesEntry;
 use crate::models::{CredentialAndPurposeKey, CredentialData, Identifier, PurposePublicKey};
 use crate::utils::now;
 use crate::{
-    CredentialAndPurposeKeyData, IdentitiesRepository, IdentityError, PurposeKeyVerification,
-    TimestampInSeconds,
+    CredentialAndPurposeKeyData, IdentityAttributesRepository, IdentityError,
+    PurposeKeyVerification, TimestampInSeconds,
 };
 
 use ockam_core::compat::collections::BTreeMap;
@@ -20,7 +20,7 @@ const MAX_ALLOWED_TIME_DRIFT: TimestampInSeconds = TimestampInSeconds(5);
 pub struct CredentialsVerification {
     purpose_keys_verification: Arc<PurposeKeyVerification>,
     verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
-    identities_repository: Arc<dyn IdentitiesRepository>,
+    identities_attributes_repository: Arc<dyn IdentityAttributesRepository>,
 }
 
 impl CredentialsVerification {
@@ -28,18 +28,13 @@ impl CredentialsVerification {
     pub fn new(
         purpose_keys_verification: Arc<PurposeKeyVerification>,
         verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
-        identities_repository: Arc<dyn IdentitiesRepository>,
+        identities_attributes_repository: Arc<dyn IdentityAttributesRepository>,
     ) -> Self {
         Self {
             purpose_keys_verification,
             verifying_vault,
-            identities_repository,
+            identities_attributes_repository,
         }
-    }
-
-    /// [`IdentitiesRepository`]
-    pub fn identities_repository(&self) -> Arc<dyn IdentitiesRepository> {
-        self.identities_repository.clone()
     }
 }
 
@@ -184,7 +179,7 @@ impl CredentialsVerification {
             .map(|(k, v)| (Vec::<u8>::from(k), Vec::<u8>::from(v)))
             .collect();
 
-        self.identities_repository
+        self.identities_attributes_repository
             .put_attributes(
                 subject,
                 AttributesEntry::new(

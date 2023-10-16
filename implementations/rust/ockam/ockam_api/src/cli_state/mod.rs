@@ -5,7 +5,10 @@ use rand::random;
 use thiserror::Error;
 
 use ockam::identity::storage::{PurposeKeysRepository, PurposeKeysSqlxDatabase};
-use ockam::identity::{Identities, IdentitiesRepository, IdentitiesSqlxDatabase, Vault};
+use ockam::identity::{
+    ChangeHistoryRepository, ChangeHistorySqlxDatabase, Identities, IdentityAttributesRepository,
+    IdentityAttributesSqlxDatabase, Vault,
+};
 use ockam::SqlxDatabase;
 use ockam_abac::{PoliciesRepository, PolicySqlxDatabase};
 use ockam_core::compat::sync::Arc;
@@ -22,7 +25,9 @@ pub use crate::cli_state::traits::*;
 pub use crate::cli_state::trust_contexts::*;
 use crate::cli_state::user_info::UsersInfoState;
 pub use crate::cli_state::vaults::*;
-use crate::identity::{NamedVault, VaultsRepository, VaultsSqlxDatabase};
+use crate::identity::{
+    IdentitiesRepository, IdentitiesSqlxDatabase, NamedVault, VaultsRepository, VaultsSqlxDatabase,
+};
 use crate::nodes::{NodesRepository, NodesSqlxDatabase};
 
 pub mod credentials;
@@ -145,6 +150,20 @@ impl CliState {
         Ok(state)
     }
 
+    pub async fn change_history_repository(&self) -> Result<Arc<dyn ChangeHistoryRepository>> {
+        Ok(Arc::new(ChangeHistorySqlxDatabase::new(
+            self.database().await?,
+        )))
+    }
+
+    pub async fn identity_attributes_repository(
+        &self,
+    ) -> Result<Arc<dyn IdentityAttributesRepository>> {
+        Ok(Arc::new(IdentityAttributesSqlxDatabase::new(
+            self.database().await?,
+        )))
+    }
+
     pub async fn identities_repository(&self) -> Result<Arc<dyn IdentitiesRepository>> {
         Ok(Arc::new(IdentitiesSqlxDatabase::new(
             self.database().await?,
@@ -171,6 +190,18 @@ impl CliState {
         Ok(Arc::new(NodesSqlxDatabase::new(self.database().await?)))
     }
 
+    pub async fn policies_repository(&self) -> Result<Arc<dyn PoliciesRepository>> {
+        Ok(Arc::new(PolicySqlxDatabase::new(self.database().await?)))
+    }
+
+    pub async fn database(&self) -> Result<Arc<SqlxDatabase>> {
+        Ok(Arc::new(SqlxDatabase::create(self.database_path()).await?))
+    }
+
+    pub fn database_path(&self) -> PathBuf {
+        self.dir.join("database.sqlite3")
+    }
+
     pub fn node_stdout_log(&self, node_name: &str) -> Result<PathBuf> {
         Ok(self.node_dir(node_name)?.join("stdout.log"))
     }
@@ -188,7 +219,7 @@ impl CliState {
     pub async fn get_identities(&self, vault: Vault) -> Result<Arc<Identities>> {
         Ok(Identities::builder()
             .with_vault(vault)
-            .with_identities_repository(self.identities_repository().await?)
+            .with_change_history_repository(self.change_history_repository().await?)
             .with_purpose_keys_repository(self.purpose_keys_repository().await?)
             .build())
     }
@@ -235,18 +266,6 @@ impl CliState {
             )
             .into()
         })
-    }
-
-    pub async fn policies_repository(&self) -> Result<Arc<dyn PoliciesRepository>> {
-        Ok(Arc::new(PolicySqlxDatabase::new(self.database().await?)))
-    }
-
-    pub async fn database(&self) -> Result<Arc<SqlxDatabase>> {
-        Ok(Arc::new(SqlxDatabase::create(self.database_path()).await?))
-    }
-
-    pub fn database_path(&self) -> PathBuf {
-        self.dir.join("database.sqlite3")
     }
 
     /// fault identity but if it has not been initialized yet

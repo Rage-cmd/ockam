@@ -1,8 +1,9 @@
-use crate::identities::{IdentitiesKeys, IdentitiesRepository};
+use crate::identities::{ChangeHistoryRepository, IdentitiesKeys};
 use crate::purpose_keys::storage::{PurposeKeysRepository, PurposeKeysSqlxDatabase};
 use crate::{
-    Credentials, CredentialsServer, CredentialsServerModule, Identifier, IdentitiesBuilder,
-    IdentitiesCreation, IdentitiesReader, IdentitiesSqlxDatabase, Identity, PurposeKeys, Vault,
+    ChangeHistorySqlxDatabase, Credentials, CredentialsServer, CredentialsServerModule, Identifier,
+    IdentitiesBuilder, IdentitiesCreation, Identity, IdentityAttributesRepository,
+    IdentityAttributesSqlxDatabase, PurposeKeys, Vault,
 };
 
 use ockam_core::compat::sync::Arc;
@@ -13,7 +14,8 @@ use ockam_core::Result;
 #[derive(Clone)]
 pub struct Identities {
     vault: Vault,
-    identities_repository: Arc<dyn IdentitiesRepository>,
+    change_history_repository: Arc<dyn ChangeHistoryRepository>,
+    identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
     purpose_keys_repository: Arc<dyn PurposeKeysRepository>,
 }
 
@@ -24,8 +26,13 @@ impl Identities {
     }
 
     /// Return the identities repository
-    pub fn repository(&self) -> Arc<dyn IdentitiesRepository> {
-        self.identities_repository.clone()
+    pub fn change_history_repository(&self) -> Arc<dyn ChangeHistoryRepository> {
+        self.change_history_repository.clone()
+    }
+
+    /// Return the identity attributes repository
+    pub fn identity_attributes_repository(&self) -> Arc<dyn IdentityAttributesRepository> {
+        self.identity_attributes_repository.clone()
     }
 
     /// Return the purpose keys repository
@@ -36,7 +43,7 @@ impl Identities {
     /// Get an [`Identity`] from the repository
     pub async fn get_identity(&self, identifier: &Identifier) -> Result<Identity> {
         let change_history = self
-            .identities_repository
+            .change_history_repository
             .get_change_history(identifier)
             .await?;
         Identity::import_from_change_history(
@@ -56,7 +63,7 @@ impl Identities {
     pub fn purpose_keys(&self) -> Arc<PurposeKeys> {
         Arc::new(PurposeKeys::new(
             self.vault.clone(),
-            self.identities_repository.as_identities_reader(),
+            self.change_history_repository.clone(),
             self.identities_keys(),
             self.purpose_keys_repository.clone(),
         ))
@@ -73,15 +80,10 @@ impl Identities {
     /// Return the identities creation service
     pub fn identities_creation(&self) -> Arc<IdentitiesCreation> {
         Arc::new(IdentitiesCreation::new(
-            self.repository(),
+            self.change_history_repository(),
             self.vault.identity_vault.clone(),
             self.vault.verifying_vault.clone(),
         ))
-    }
-
-    /// Return the identities reader
-    pub fn identities_reader(&self) -> Arc<dyn IdentitiesReader> {
-        self.repository().as_identities_reader()
     }
 
     /// Return the identities credentials service
@@ -90,7 +92,8 @@ impl Identities {
             self.vault.credential_vault.clone(),
             self.vault.verifying_vault.clone(),
             self.purpose_keys(),
-            self.identities_repository.clone(),
+            self.change_history_repository.clone(),
+            self.identity_attributes_repository.clone(),
         ))
     }
 
@@ -104,12 +107,14 @@ impl Identities {
     /// Create a new identities module
     pub(crate) fn new(
         vault: Vault,
-        identities_repository: Arc<dyn IdentitiesRepository>,
+        change_history_repository: Arc<dyn ChangeHistoryRepository>,
+        identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
         purpose_keys_repository: Arc<dyn PurposeKeysRepository>,
     ) -> Identities {
         Identities {
             vault,
-            identities_repository,
+            change_history_repository,
+            identity_attributes_repository,
             purpose_keys_repository,
         }
     }
@@ -118,7 +123,8 @@ impl Identities {
     pub fn builder() -> IdentitiesBuilder {
         IdentitiesBuilder {
             vault: Vault::create(),
-            repository: IdentitiesSqlxDatabase::create(),
+            change_history_repository: ChangeHistorySqlxDatabase::create(),
+            identity_attributes_repository: IdentityAttributesSqlxDatabase::create(),
             purpose_keys_repository: PurposeKeysSqlxDatabase::create(),
         }
     }

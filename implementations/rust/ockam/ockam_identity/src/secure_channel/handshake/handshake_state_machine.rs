@@ -102,7 +102,7 @@ impl CommonStateMachine {
         // prepare the payload that will be sent either in message 2 or message 3
         let change_history = self
             .identities
-            .repository()
+            .change_history_repository()
             .get_change_history(&self.identifier)
             .await?;
         let payload = IdentityAndCredentials {

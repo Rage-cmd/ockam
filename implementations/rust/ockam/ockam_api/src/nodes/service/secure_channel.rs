@@ -496,11 +496,11 @@ impl NodeManager {
             return Ok(self.secure_channels.clone());
         }
         let vault = self.get_secure_channels_vault(vault_name.clone()).await?;
-        let identity_repository = self.cli_state.identities_repository().await?;
+        let identity_repository = self.cli_state.change_history_repository().await?;
         let registry = self.secure_channels.secure_channel_registry();
         Ok(SecureChannels::builder()
             .with_vault(vault)
-            .with_identities_repository(identity_repository)
+            .with_change_history_repository(identity_repository)
             .with_secure_channels_registry(registry)
             .build())
     }

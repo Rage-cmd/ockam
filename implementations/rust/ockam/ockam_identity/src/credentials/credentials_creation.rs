@@ -1,20 +1,21 @@
+use core::time::Duration;
+
+use ockam_core::compat::sync::Arc;
+use ockam_core::Result;
+use ockam_vault::{VaultForSigning, VaultForVerifyingSignatures};
+
 use crate::models::{
     Attributes, Credential, CredentialAndPurposeKey, CredentialData, Identifier, VersionedData,
 };
 use crate::utils::{add_seconds, now};
-use crate::{IdentitiesRepository, Identity, PurposeKeyCreation};
-
-use core::time::Duration;
-use ockam_core::compat::sync::Arc;
-use ockam_core::Result;
-use ockam_vault::{VaultForSigning, VaultForVerifyingSignatures};
+use crate::{ChangeHistoryRepository, Identity, PurposeKeyCreation};
 
 /// Service for managing [`Credential`]s
 pub struct CredentialsCreation {
     purpose_keys_creation: Arc<PurposeKeyCreation>,
     credential_vault: Arc<dyn VaultForSigning>,
     verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
-    identities_repository: Arc<dyn IdentitiesRepository>,
+    change_history_repository: Arc<dyn ChangeHistoryRepository>,
 }
 
 impl CredentialsCreation {
@@ -23,19 +24,14 @@ impl CredentialsCreation {
         purpose_keys_creation: Arc<PurposeKeyCreation>,
         credential_vault: Arc<dyn VaultForSigning>,
         verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
-        identities_repository: Arc<dyn IdentitiesRepository>,
+        change_history_repository: Arc<dyn ChangeHistoryRepository>,
     ) -> Self {
         Self {
             purpose_keys_creation,
             verifying_vault,
             credential_vault,
-            identities_repository,
+            change_history_repository,
         }
-    }
-
-    /// [`IdentitiesRepository`]
-    pub fn identities_repository(&self) -> Arc<dyn IdentitiesRepository> {
-        self.identities_repository.clone()
     }
 }
 
@@ -55,7 +51,7 @@ impl CredentialsCreation {
             .await?;
 
         let subject_change_history = self
-            .identities_repository
+            .change_history_repository
             .get_change_history(subject)
             .await?;
         let subject_identity = Identity::import_from_change_history(

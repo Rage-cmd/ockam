@@ -108,7 +108,7 @@ async fn start_node(ctx: Context, project_information_path: &str, token: OneTime
         .await?;
 
     // 3. create an access control policy checking the value of the "component" attribute of the caller
-    let access_control = AbacAccessControl::create(identities().repository(), "component", "control");
+    let access_control = AbacAccessControl::create(identities().change_history_repository(), "component", "control");
 
     // 4. create a tcp inlet with the above policy
 

@@ -48,14 +48,14 @@ async fn main(ctx: Context) -> Result<()> {
     // For a different application this attested attribute set can be different and
     // distinct for each identifier, but for this example we'll keep things simple.
     let credential_issuer = CredentialsIssuer::new(
-        node.identities().repository(),
+        node.identities().change_history_repository(),
         node.credentials(),
         issuer.identifier(),
         "trust_context".into(),
     );
     for identifier in known_identifiers.iter() {
         node.identities()
-            .repository()
+            .change_history_repository()
             .put_attribute_value(identifier, b"cluster".to_vec(), b"production".to_vec())
             .await?;
     }

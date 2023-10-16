@@ -2,11 +2,12 @@ use std::path::Path;
 
 use tracing::info;
 
+use ockam::identity::Vault;
 use ockam::identity::{
-    CredentialsIssuer, Identifier, Identities, IdentitiesRepository, IdentityAttributesReader,
-    IdentityAttributesWriter, SecureChannelListenerOptions, SecureChannels, TrustEveryonePolicy,
+    CredentialsIssuer, Identifier, Identities, IdentityAttributesRepository,
+    IdentityAttributesSqlxDatabase, SecureChannelListenerOptions, SecureChannels,
+    TrustEveryonePolicy,
 };
-use ockam::identity::{IdentitiesSqlxDatabase, Vault};
 use ockam_abac::expr::{and, eq, ident, str};
 use ockam_abac::{AbacAccessControl, Env};
 use ockam_core::compat::sync::Arc;
@@ -20,7 +21,7 @@ use ockam_transport_tcp::{TcpListenerOptions, TcpTransport};
 use crate::authenticator::enrollment_tokens::EnrollmentTokenAuthenticator;
 use crate::authority_node::authority::EnrollerCheck::{AnyMember, EnrollerOnly};
 use crate::authority_node::Configuration;
-use crate::bootstrapped_identities_store::BootstrapedIdentityStore;
+use crate::bootstrapped_identities_store::BootstrapedIdentityAttributesStore;
 use crate::echoer::Echoer;
 use crate::{actions, DefaultAddress};
 
@@ -56,10 +57,10 @@ impl Authority {
     pub async fn create(configuration: &Configuration) -> Result<Authority> {
         debug!(?configuration, "creating the authority");
         let vault = Self::create_secure_channels_vault(configuration).await?;
-        let repository = Self::create_identities_repository(configuration).await?;
+        let repository = Self::create_identity_attributes_repository(configuration).await?;
         let secure_channels = SecureChannels::builder()
             .with_vault(vault)
-            .with_identities_repository(repository)
+            .with_identity_attributes_repository(repository)
             .build();
 
         let identifier = configuration.identifier();
@@ -119,8 +120,7 @@ impl Authority {
 
         let direct = crate::authenticator::direct::DirectAuthenticator::new(
             configuration.project_identifier(),
-            self.attributes_writer(),
-            self.attributes_reader(),
+            self.identity_attributes_repository(),
         )
         .await?;
 
@@ -148,7 +148,7 @@ impl Authority {
 
         let (issuer, acceptor) = EnrollmentTokenAuthenticator::new_worker_pair(
             configuration.project_identifier(),
-            self.attributes_writer(),
+            self.identity_attributes_repository(),
         );
 
         // start an enrollment token issuer with an abac policy checking that
@@ -191,7 +191,9 @@ impl Authority {
     ) -> Result<()> {
         // create and start a credential issuer worker
         let issuer = CredentialsIssuer::new(
-            self.secure_channels.identities().repository(),
+            self.secure_channels
+                .identities()
+                .identity_attributes_repository(),
             self.secure_channels.identities().credentials(),
             &self.identifier,
             configuration.project_identifier(),
@@ -217,7 +219,7 @@ impl Authority {
     ) -> Result<()> {
         if let Some(okta) = &configuration.okta {
             let okta_worker = crate::okta::Server::new(
-                self.attributes_writer(),
+                self.identity_attributes_repository(),
                 configuration.project_identifier(),
                 okta.tenant_base_url(),
                 okta.certificate(),
@@ -254,19 +256,9 @@ impl Authority {
         self.secure_channels.identities()
     }
 
-    /// Return the identities repository used by the authority
-    fn identities_repository(&self) -> Arc<dyn IdentitiesRepository> {
-        self.identities().repository().clone()
-    }
-
-    /// Return the identities repository as writer used by the authority
-    fn attributes_writer(&self) -> Arc<dyn IdentityAttributesWriter> {
-        self.identities_repository().as_attributes_writer().clone()
-    }
-
-    /// Return the identities repository as reader used by the authority
-    fn attributes_reader(&self) -> Arc<dyn IdentityAttributesReader> {
-        self.identities_repository().as_attributes_reader().clone()
+    /// Return the identity attributes repository used by the authority
+    fn identity_attributes_repository(&self) -> Arc<dyn IdentityAttributesRepository> {
+        self.identities().identity_attributes_repository().clone()
     }
 
     /// Create an identity vault backed by a FileStorage
@@ -278,13 +270,13 @@ impl Authority {
     }
 
     /// Create an authenticated storage backed by a Lmdb database
-    async fn create_identities_repository(
+    async fn create_identity_attributes_repository(
         configuration: &Configuration,
-    ) -> Result<Arc<dyn IdentitiesRepository>> {
+    ) -> Result<Arc<dyn IdentityAttributesRepository>> {
         let storage_path = &configuration.storage_path;
         Self::create_ockam_directory_if_necessary(storage_path)?;
         let storage = Arc::new(SqlxDatabase::create(&storage_path).await?);
-        let repository = Arc::new(IdentitiesSqlxDatabase::new(storage));
+        let repository = Arc::new(IdentityAttributesSqlxDatabase::new(storage));
         Ok(Self::bootstrap_repository(repository, configuration))
     }
 
@@ -301,11 +293,11 @@ impl Authority {
     /// identities. The values either come from the command line or are read directly from a file
     /// every time we try to retrieve some attributes
     fn bootstrap_repository(
-        repository: Arc<dyn IdentitiesRepository>,
+        repository: Arc<dyn IdentityAttributesRepository>,
         configuration: &Configuration,
-    ) -> Arc<dyn IdentitiesRepository> {
+    ) -> Arc<dyn IdentityAttributesRepository> {
         let trusted_identities = &configuration.trusted_identities;
-        Arc::new(BootstrapedIdentityStore::new(
+        Arc::new(BootstrapedIdentityAttributesStore::new(
             Arc::new(trusted_identities.clone()),
             repository.clone(),
         ))
@@ -368,7 +360,7 @@ impl Authority {
             str(configuration.project_identifier.clone()),
         );
         let abac = Arc::new(AbacAccessControl::new(
-            self.identities_repository(),
+            self.identity_attributes_repository(),
             rule,
             env,
         ));

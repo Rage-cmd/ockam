@@ -84,7 +84,7 @@ impl NodeManager {
             ));
         }
 
-        let server = Server::new(self.attributes_reader());
+        let server = Server::new(self.identity_attributes_repository());
         ctx.start_worker(addr.clone(), server).await?;
 
         self.registry

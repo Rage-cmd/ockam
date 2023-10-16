@@ -434,7 +434,7 @@ pub mod test_utils {
         // has been re-created
         let secure_channels = SecureChannels::builder()
             .with_vault(vault)
-            .with_identities_repository(cli_state.identities_repository().await?)
+            .with_change_history_repository(cli_state.change_history_repository().await?)
             .build();
 
         let identity = create_random_identity(&secure_channels).await?;

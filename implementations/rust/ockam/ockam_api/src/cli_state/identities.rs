@@ -1,8 +1,9 @@
-use ockam::identity::{Identifier, Identity, NamedIdentity, Vault};
+use ockam::identity::{Identifier, Identity, Vault};
 use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Error;
 
 use crate::cli_state::{random_name, CliState, Result};
+use crate::identity::NamedIdentity;
 
 impl CliState {
     /// Create an identity associated with a name and a specific vault name
@@ -136,16 +137,23 @@ impl CliState {
             }
         };
         match named_identity {
-            Some(identity) => Ok(Identity::import_from_change_history(
-                Some(&identity.identifier()),
-                identity.change_history(),
-                self.get_default_vault()
+            Some(identity) => {
+                let change_history = self
+                    .change_history_repository()
                     .await?
-                    .vault()
-                    .await?
-                    .verifying_vault,
-            )
-            .await?),
+                    .get_change_history(&identity.identifier())
+                    .await?;
+                Ok(Identity::import_from_change_history(
+                    Some(&identity.identifier()),
+                    change_history,
+                    self.get_default_vault()
+                        .await?
+                        .vault()
+                        .await?
+                        .verifying_vault,
+                )
+                .await?)
+            }
             None => Err(Self::missing_identifier(name).into()),
         }
     }
@@ -196,13 +204,22 @@ impl CliState {
             .set_as_default_by_name(name)
             .await?)
     }
+
     /// Delete an identity by name
+    /// This first removes the name assocation to the identity then the identity change history
     pub async fn delete_identity_by_name(&self, name: &str) -> Result<()> {
-        Ok(self
+        if let Some(identifier) = self
             .identities_repository()
             .await?
             .delete_identity_by_name(name)
-            .await?)
+            .await?
+        {
+            self.change_history_repository()
+                .await?
+                .delete_identity(&identifier)
+                .await?;
+        };
+        Ok(())
     }
 
     fn missing_identifier(name: &Option<String>) -> Error {

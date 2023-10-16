@@ -1,15 +1,16 @@
 use ockam_core::compat::sync::Arc;
 use ockam_vault::storage::SecretsRepository;
 
-use crate::identities::{Identities, IdentitiesRepository};
+use crate::identities::{ChangeHistoryRepository, Identities};
 use crate::purpose_keys::storage::PurposeKeysRepository;
-use crate::Vault;
+use crate::{IdentityAttributesRepository, Vault};
 
 /// Builder for Identities services
 #[derive(Clone)]
 pub struct IdentitiesBuilder {
     pub(crate) vault: Vault,
-    pub(crate) repository: Arc<dyn IdentitiesRepository>,
+    pub(crate) change_history_repository: Arc<dyn ChangeHistoryRepository>,
+    pub(crate) identity_attributes_repository: Arc<dyn IdentityAttributesRepository>,
     pub(crate) purpose_keys_repository: Arc<dyn PurposeKeysRepository>,
 }
 
@@ -32,8 +33,20 @@ impl IdentitiesBuilder {
     }
 
     /// Set a specific repository for identities
-    pub fn with_identities_repository(mut self, repository: Arc<dyn IdentitiesRepository>) -> Self {
-        self.repository = repository;
+    pub fn with_change_history_repository(
+        mut self,
+        repository: Arc<dyn ChangeHistoryRepository>,
+    ) -> Self {
+        self.change_history_repository = repository;
+        self
+    }
+
+    /// Set a specific repository for identity attributes
+    pub fn with_identity_attributes_repository(
+        mut self,
+        repository: Arc<dyn IdentityAttributesRepository>,
+    ) -> Self {
+        self.identity_attributes_repository = repository;
         self
     }
 
@@ -50,7 +63,8 @@ impl IdentitiesBuilder {
     pub fn build(self) -> Arc<Identities> {
         Arc::new(Identities::new(
             self.vault,
-            self.repository,
+            self.change_history_repository,
+            self.identity_attributes_repository,
             self.purpose_keys_repository,
         ))
     }

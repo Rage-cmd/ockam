@@ -6,8 +6,8 @@ use crate::models::{
 };
 use crate::purpose_keys::storage::PurposeKeysRepository;
 use crate::{
-    CredentialPurposeKey, CredentialPurposeKeyBuilder, IdentitiesKeys, IdentitiesReader, Identity,
-    IdentityError, Purpose, PurposeKeyVerification, SecureChannelPurposeKey,
+    ChangeHistoryRepository, CredentialPurposeKey, CredentialPurposeKeyBuilder, IdentitiesKeys,
+    Identity, IdentityError, Purpose, PurposeKeyVerification, SecureChannelPurposeKey,
     SecureChannelPurposeKeyBuilder, TimestampInSeconds, Vault,
 };
 
@@ -15,7 +15,7 @@ use crate::{
 #[derive(Clone)]
 pub struct PurposeKeyCreation {
     vault: Vault,
-    identities_reader: Arc<dyn IdentitiesReader>,
+    identities_reader: Arc<dyn ChangeHistoryRepository>,
     identity_keys: Arc<IdentitiesKeys>,
     repository: Arc<dyn PurposeKeysRepository>,
 }
@@ -24,7 +24,7 @@ impl PurposeKeyCreation {
     /// Constructor.
     pub(crate) fn new(
         vault: Vault,
-        identities_reader: Arc<dyn IdentitiesReader>,
+        identities_reader: Arc<dyn ChangeHistoryRepository>,
         identity_keys: Arc<IdentitiesKeys>,
         repository: Arc<dyn PurposeKeysRepository>,
     ) -> Self {

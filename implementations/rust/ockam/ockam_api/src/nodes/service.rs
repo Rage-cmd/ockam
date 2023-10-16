@@ -10,12 +10,10 @@ use miette::IntoDiagnostic;
 use minicbor::{Decoder, Encode};
 
 use ockam::identity::models::CredentialAndPurposeKey;
-use ockam::identity::CredentialsServerModule;
 use ockam::identity::TrustContext;
 use ockam::identity::Vault;
-use ockam::identity::{
-    Credentials, CredentialsServer, Identities, IdentitiesRepository, IdentityAttributesReader,
-};
+use ockam::identity::{ChangeHistoryRepository, Credentials, CredentialsServer, Identities};
+use ockam::identity::{CredentialsServerModule, IdentityAttributesRepository};
 use ockam::identity::{Identifier, SecureChannels};
 use ockam::{
     Address, Context, RelayService, RelayServiceOptions, Result, Routed, TcpTransport, Worker,
@@ -30,7 +28,7 @@ use ockam_core::{AllowAll, AsyncTryClone};
 use ockam_core::{Error, IncomingAccessControl};
 use ockam_multiaddr::MultiAddr;
 
-use crate::bootstrapped_identities_store::BootstrapedIdentityStore;
+use crate::bootstrapped_identities_store::BootstrapedIdentityAttributesStore;
 use crate::bootstrapped_identities_store::PreTrustedIdentities;
 use crate::cli_state::{CliState, StateDirTrait};
 use crate::cloud::{AuthorityNode, ProjectNode};
@@ -136,12 +134,12 @@ impl NodeManager {
         self.secure_channels.identities()
     }
 
-    pub(super) fn identities_repository(&self) -> Arc<dyn IdentitiesRepository> {
-        self.identities().repository().clone()
+    pub(super) fn identities_repository(&self) -> Arc<dyn ChangeHistoryRepository> {
+        self.identities().change_history_repository().clone()
     }
 
-    pub(super) fn attributes_reader(&self) -> Arc<dyn IdentityAttributesReader> {
-        self.identities_repository().as_attributes_reader()
+    pub(super) fn identity_attributes_repository(&self) -> Arc<dyn IdentityAttributesRepository> {
+        self.identities().identity_attributes_repository().clone()
     }
 
     pub(super) fn credentials(&self) -> Arc<Credentials> {
@@ -270,7 +268,7 @@ impl NodeManager {
             let policies = self.policies_repository.clone();
             Ok(Arc::new(PolicyAccessControl::new(
                 policies,
-                self.identities_repository(),
+                self.identity_attributes_repository(),
                 r.clone(),
                 a.clone(),
                 env,
@@ -372,28 +370,33 @@ impl NodeManager {
         debug!("create the identity repository");
         let cli_state = general_options.cli_state;
 
-        let identities_repository: Arc<dyn IdentitiesRepository> =
-            cli_state.identities_repository().await?;
+        let change_history_repository: Arc<dyn ChangeHistoryRepository> =
+            cli_state.change_history_repository().await?;
+        let identity_attributes_repository: Arc<dyn IdentityAttributesRepository> =
+            cli_state.identity_attributes_repository().await?;
         let policies_repository: Arc<dyn PoliciesRepository> =
             cli_state.policies_repository().await?;
 
         //TODO: fix this.  Either don't require it to be a bootstrappedidentitystore (and use the
         //trait instead),  or pass it from the general_options always.
         let vault: Vault = cli_state.get_node_vault(&general_options.node_name).await?;
-        let identities_repository: Arc<dyn IdentitiesRepository> = Arc::new(match general_options
-            .pre_trusted_identities
-        {
-            None => BootstrapedIdentityStore::new(
-                Arc::new(PreTrustedIdentities::new_from_string("{}")?),
-                identities_repository.clone(),
-            ),
-            Some(f) => BootstrapedIdentityStore::new(Arc::new(f), identities_repository.clone()),
-        });
+        let identities_repository: Arc<dyn IdentityAttributesRepository> =
+            Arc::new(match general_options.pre_trusted_identities {
+                None => BootstrapedIdentityAttributesStore::new(
+                    Arc::new(PreTrustedIdentities::new_from_string("{}")?),
+                    identity_attributes_repository.clone(),
+                ),
+                Some(f) => BootstrapedIdentityAttributesStore::new(
+                    Arc::new(f),
+                    identity_attributes_repository.clone(),
+                ),
+            });
 
         debug!("create the secure channels service");
         let secure_channels = SecureChannels::builder()
             .with_vault(vault)
-            .with_identities_repository(identities_repository.clone())
+            .with_change_history_repository(change_history_repository.clone())
+            .with_identity_attributes_repository(identity_attributes_repository.clone())
             .build();
 
         let mut s = Self {

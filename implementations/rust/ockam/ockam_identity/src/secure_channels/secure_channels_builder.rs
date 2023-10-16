@@ -1,10 +1,10 @@
 use ockam_core::compat::sync::Arc;
 use ockam_vault::storage::SecretsRepository;
 
-use crate::identities::{Identities, IdentitiesRepository};
+use crate::identities::{ChangeHistoryRepository, Identities};
 use crate::secure_channel::SecureChannelRegistry;
 use crate::secure_channels::SecureChannels;
-use crate::{IdentitiesBuilder, Vault};
+use crate::{IdentitiesBuilder, IdentityAttributesRepository, Vault};
 
 /// This struct supports all the services related to secure channels
 #[derive(Clone)]
@@ -33,10 +33,24 @@ impl SecureChannelsBuilder {
     }
 
     /// Set a specific identities repository
-    pub fn with_identities_repository(mut self, repository: Arc<dyn IdentitiesRepository>) -> Self {
+    pub fn with_change_history_repository(
+        mut self,
+        repository: Arc<dyn ChangeHistoryRepository>,
+    ) -> Self {
         self.identities_builder = self
             .identities_builder
-            .with_identities_repository(repository);
+            .with_change_history_repository(repository);
+        self
+    }
+
+    /// Set a specific identity attributes repository
+    pub fn with_identity_attributes_repository(
+        mut self,
+        repository: Arc<dyn IdentityAttributesRepository>,
+    ) -> Self {
+        self.identities_builder = self
+            .identities_builder
+            .with_identity_attributes_repository(repository);
         self
     }
 
@@ -44,7 +58,7 @@ impl SecureChannelsBuilder {
     pub fn with_identities(mut self, identities: Arc<Identities>) -> Self {
         self.identities_builder = self
             .identities_builder
-            .with_identities_repository(identities.repository())
+            .with_change_history_repository(identities.change_history_repository())
             .with_vault(identities.vault())
             .with_purpose_keys_repository(identities.purpose_keys_repository());
         self

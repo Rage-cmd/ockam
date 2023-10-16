@@ -4,12 +4,12 @@ use ockam_vault::{SigningSecretKeyHandle, VaultForSigning, VaultForVerifyingSign
 
 use crate::identities::identity_builder::IdentityBuilder;
 use crate::models::{ChangeHistory, Identifier};
-use crate::{IdentitiesKeys, IdentitiesRepository, Identity, IdentityError};
+use crate::{ChangeHistoryRepository, IdentitiesKeys, Identity, IdentityError};
 use crate::{IdentityHistoryComparison, IdentityOptions};
 
 /// This struct supports functions for the creation and import of identities using an IdentityVault
 pub struct IdentitiesCreation {
-    pub(super) repository: Arc<dyn IdentitiesRepository>,
+    pub(super) repository: Arc<dyn ChangeHistoryRepository>,
     pub(super) identity_vault: Arc<dyn VaultForSigning>,
     pub(super) verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
 }
@@ -17,7 +17,7 @@ pub struct IdentitiesCreation {
 impl IdentitiesCreation {
     /// Create a new identities import module
     pub fn new(
-        repository: Arc<dyn IdentitiesRepository>,
+        repository: Arc<dyn ChangeHistoryRepository>,
         identity_vault: Arc<dyn VaultForSigning>,
         verifying_vault: Arc<dyn VaultForVerifyingSignatures>,
     ) -> Self {

@@ -1,13 +1,15 @@
 use ockam_core::compat::sync::Arc;
 
 use crate::purpose_keys::storage::PurposeKeysRepository;
-use crate::{IdentitiesKeys, IdentitiesReader, PurposeKeyCreation, PurposeKeyVerification, Vault};
+use crate::{
+    ChangeHistoryRepository, IdentitiesKeys, PurposeKeyCreation, PurposeKeyVerification, Vault,
+};
 
 /// This struct supports all the services related to identities
 #[derive(Clone)]
 pub struct PurposeKeys {
     vault: Vault,
-    identities_reader: Arc<dyn IdentitiesReader>,
+    identities_reader: Arc<dyn ChangeHistoryRepository>,
     identity_keys: Arc<IdentitiesKeys>,
     repository: Arc<dyn PurposeKeysRepository>,
 }
@@ -16,7 +18,7 @@ impl PurposeKeys {
     /// Create a new identities module
     pub fn new(
         vault: Vault,
-        identities_reader: Arc<dyn IdentitiesReader>,
+        identities_reader: Arc<dyn ChangeHistoryRepository>,
         identity_keys: Arc<IdentitiesKeys>,
         repository: Arc<dyn PurposeKeysRepository>,
     ) -> Self {

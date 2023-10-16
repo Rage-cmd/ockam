@@ -4,12 +4,8 @@ use serde::{Deserialize, Serialize};
 use serde_json as json;
 use tracing::trace;
 
-use ockam::identity::models::ChangeHistory;
 use ockam::identity::utils::now;
-use ockam::identity::{
-    AttributesEntry, Identifier, IdentitiesReader, IdentitiesRepository, IdentitiesWriter,
-    Identity, IdentityAttributesReader, IdentityAttributesWriter, NamedIdentity,
-};
+use ockam::identity::{AttributesEntry, Identifier, IdentityAttributesRepository};
 use ockam_core::async_trait;
 use ockam_core::compat::sync::Arc;
 use ockam_core::compat::{collections::HashMap, string::String, vec::Vec};
@@ -17,15 +13,15 @@ use ockam_core::errcode::{Kind, Origin};
 use ockam_core::Result;
 
 #[derive(Clone)]
-pub struct BootstrapedIdentityStore {
-    bootstrapped: Arc<dyn IdentityAttributesReader>,
-    repository: Arc<dyn IdentitiesRepository>,
+pub struct BootstrapedIdentityAttributesStore {
+    bootstrapped: Arc<dyn IdentityAttributesRepository>,
+    repository: Arc<dyn IdentityAttributesRepository>,
 }
 
-impl BootstrapedIdentityStore {
+impl BootstrapedIdentityAttributesStore {
     pub fn new(
-        bootstrapped: Arc<dyn IdentityAttributesReader>,
-        repository: Arc<dyn IdentitiesRepository>,
+        bootstrapped: Arc<dyn IdentityAttributesRepository>,
+        repository: Arc<dyn IdentityAttributesRepository>,
     ) -> Self {
         Self {
             bootstrapped,
@@ -35,7 +31,7 @@ impl BootstrapedIdentityStore {
 }
 
 #[async_trait]
-impl IdentityAttributesReader for BootstrapedIdentityStore {
+impl IdentityAttributesRepository for BootstrapedIdentityAttributesStore {
     async fn get_attributes(&self, identity_id: &Identifier) -> Result<Option<AttributesEntry>> {
         trace! {
             target: "ockam_api::bootstrapped_identities_store",
@@ -54,10 +50,7 @@ impl IdentityAttributesReader for BootstrapedIdentityStore {
         l.append(&mut l2);
         Ok(l)
     }
-}
 
-#[async_trait]
-impl IdentityAttributesWriter for BootstrapedIdentityStore {
     async fn put_attributes(&self, sender: &Identifier, entry: AttributesEntry) -> Result<()> {
         trace! {
             target: "ockam_api::bootstrapped_identities_store",
@@ -88,99 +81,6 @@ impl IdentityAttributesWriter for BootstrapedIdentityStore {
 
     async fn delete(&self, identity: &Identifier) -> Result<()> {
         self.repository.delete(identity).await
-    }
-}
-
-#[async_trait]
-impl IdentitiesReader for BootstrapedIdentityStore {
-    async fn get_change_history_optional(
-        &self,
-        identifier: &Identifier,
-    ) -> Result<Option<ChangeHistory>> {
-        self.repository
-            .get_change_history_optional(identifier)
-            .await
-    }
-
-    async fn get_change_history(&self, identifier: &Identifier) -> Result<ChangeHistory> {
-        self.repository.get_change_history(identifier).await
-    }
-
-    async fn get_identifier_by_name(&self, name: &str) -> Result<Option<Identifier>> {
-        self.repository.get_identifier_by_name(name).await
-    }
-
-    async fn get_default_identifier(&self) -> Result<Option<Identifier>> {
-        self.repository.get_default_identifier().await
-    }
-
-    async fn get_named_identities(&self) -> Result<Vec<NamedIdentity>> {
-        self.repository.get_named_identities().await
-    }
-
-    async fn get_named_identity(&self, name: &str) -> Result<Option<NamedIdentity>> {
-        self.repository.get_named_identity(name).await
-    }
-
-    async fn get_default_named_identity(&self) -> Result<Option<NamedIdentity>> {
-        self.repository.get_default_named_identity().await
-    }
-
-    async fn get_default_identity_name(&self) -> Result<Option<String>> {
-        self.repository.get_default_identity_name().await
-    }
-
-    async fn is_default_identity_by_name(&self, name: &str) -> Result<bool> {
-        self.repository.is_default_identity_by_name(name).await
-    }
-}
-
-#[async_trait]
-impl IdentitiesWriter for BootstrapedIdentityStore {
-    async fn store_identity(&self, identity: &Identity) -> Result<()> {
-        self.repository.store_identity(identity).await
-    }
-
-    async fn name_identity(&self, identifier: &Identifier, name: &str) -> Result<()> {
-        self.repository.name_identity(identifier, name).await
-    }
-
-    async fn set_as_default(&self, identifier: &Identifier) -> Result<()> {
-        self.repository.set_as_default(identifier).await
-    }
-
-    async fn set_as_default_by_name(&self, name: &str) -> Result<()> {
-        self.repository.set_as_default_by_name(name).await
-    }
-
-    async fn update_identity(&self, identity: &Identity) -> Result<()> {
-        self.repository.update_identity(identity).await
-    }
-
-    async fn delete_identity(&self, identifier: &Identifier) -> Result<()> {
-        self.repository.delete_identity(identifier).await
-    }
-
-    async fn delete_identity_by_name(&self, name: &str) -> Result<()> {
-        self.repository.delete_identity_by_name(name).await
-    }
-}
-
-impl IdentitiesRepository for BootstrapedIdentityStore {
-    fn as_attributes_reader(&self) -> Arc<dyn IdentityAttributesReader> {
-        Arc::new(self.clone())
-    }
-
-    fn as_attributes_writer(&self) -> Arc<dyn IdentityAttributesWriter> {
-        Arc::new(self.clone())
-    }
-
-    fn as_identities_reader(&self) -> Arc<dyn IdentitiesReader> {
-        Arc::new(self.clone())
-    }
-
-    fn as_identities_writer(&self) -> Arc<dyn IdentitiesWriter> {
-        Arc::new(self.clone())
     }
 }
 
@@ -237,7 +137,7 @@ impl From<HashMap<Identifier, AttributesEntry>> for PreTrustedIdentities {
 }
 
 #[async_trait]
-impl IdentityAttributesReader for PreTrustedIdentities {
+impl IdentityAttributesRepository for PreTrustedIdentities {
     async fn get_attributes(&self, identity_id: &Identifier) -> Result<Option<AttributesEntry>> {
         match self {
             PreTrustedIdentities::Fixed(trusted) => Ok(trusted.get(identity_id).cloned()),
@@ -258,5 +158,22 @@ impl IdentityAttributesReader for PreTrustedIdentities {
                 .map(|(k, v)| (k, v))
                 .collect()),
         }
+    }
+
+    async fn put_attributes(&self, _identity: &Identifier, _entry: AttributesEntry) -> Result<()> {
+        Ok(())
+    }
+
+    async fn put_attribute_value(
+        &self,
+        _subject: &Identifier,
+        _attribute_name: Vec<u8>,
+        _attribute_value: Vec<u8>,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    async fn delete(&self, _identity: &Identifier) -> Result<()> {
+        Ok(())
     }
 }

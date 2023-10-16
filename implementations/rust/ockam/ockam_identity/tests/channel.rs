@@ -187,7 +187,7 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
 
     let alice_attributes = secure_channels
         .identities()
-        .repository()
+        .change_history_repository()
         .get_attributes(alice.identifier())
         .await?
         .unwrap();
@@ -206,7 +206,7 @@ async fn test_channel_send_credentials(context: &mut Context) -> Result<()> {
 
     let bob_attributes = secure_channels
         .identities()
-        .repository()
+        .change_history_repository()
         .get_attributes(bob.identifier())
         .await?
         .unwrap();

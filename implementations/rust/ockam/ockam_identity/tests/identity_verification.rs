@@ -79,7 +79,7 @@ async fn test_eject_signatures() -> Result<()> {
     }
 
     let identity = identities
-        .repository()
+        .change_history_repository()
         .get_change_history(identity.identifier())
         .await?;
     let change_history = eject_random_signature(&identity)?;

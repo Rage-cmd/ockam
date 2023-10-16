@@ -8,7 +8,7 @@ use ockam_vault::SigningKeyType;
 async fn create_and_retrieve() -> Result<()> {
     let identities = identities();
     let identities_creation = identities.identities_creation();
-    let repository = identities.repository();
+    let repository = identities.change_history_repository();
     let identities_keys = identities.identities_keys();
 
     let identity = identities_creation.create_identity().await?;
@@ -56,7 +56,7 @@ async fn create_and_retrieve() -> Result<()> {
 async fn create_p256() -> Result<()> {
     let identities = identities();
     let identities_creation = identities.identities_creation();
-    let repository = identities.repository();
+    let repository = identities.change_history_repository();
     let identities_keys = identities.identities_keys();
 
     let identity = identities_creation

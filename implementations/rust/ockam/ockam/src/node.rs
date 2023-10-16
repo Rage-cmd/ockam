@@ -12,8 +12,8 @@ use ockam_vault::SigningSecretKeyHandle;
 
 use crate::identity::models::Identifier;
 use crate::identity::{
-    secure_channels, Credentials, CredentialsServer, Identities, IdentitiesCreation,
-    IdentitiesKeys, IdentitiesRepository, SecureChannel, SecureChannelListener,
+    secure_channels, ChangeHistoryRepository, Credentials, CredentialsServer, Identities,
+    IdentitiesCreation, IdentitiesKeys, SecureChannel, SecureChannelListener,
     SecureChannelRegistry, SecureChannels, SecureChannelsBuilder,
 };
 use crate::identity::{Identity, SecureChannelListenerOptions, SecureChannelOptions};
@@ -297,8 +297,8 @@ impl Node {
     }
 
     /// Return the repository used to store identities data
-    pub fn identities_repository(&self) -> Arc<dyn IdentitiesRepository> {
-        self.secure_channels.identities().repository()
+    pub fn identities_repository(&self) -> Arc<dyn ChangeHistoryRepository> {
+        self.secure_channels.identities().change_history_repository()
     }
 
     /// Return a new builder for top-level services
@@ -342,8 +342,11 @@ impl NodeBuilder {
     }
 
     /// Set a specific identities repository
-    pub fn with_identities_repository(mut self, repository: Arc<dyn IdentitiesRepository>) -> Self {
-        self.builder = self.builder.with_identities_repository(repository);
+    pub fn with_identities_repository(
+        mut self,
+        repository: Arc<dyn ChangeHistoryRepository>,
+    ) -> Self {
+        self.builder = self.builder.with_change_history_repository(repository);
         self
     }
 

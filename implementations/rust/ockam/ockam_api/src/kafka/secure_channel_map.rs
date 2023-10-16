@@ -202,7 +202,9 @@ impl<F: RelayCreator> KafkaSecureChannelControllerImpl<F> {
         trust_context_id: String,
     ) -> KafkaSecureChannelControllerImpl<F> {
         let access_control = AbacAccessControl::create(
-            secure_channels.identities().repository(),
+            secure_channels
+                .identities()
+                .identity_attributes_repository(),
             TRUST_CONTEXT_ID_UTF8,
             &trust_context_id,
         );

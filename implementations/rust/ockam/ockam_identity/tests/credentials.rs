@@ -18,7 +18,7 @@ async fn full_flow_oneway(ctx: &mut Context) -> Result<()> {
     let secure_channels = secure_channels();
     let identities = secure_channels.identities();
     let identities_creation = identities.identities_creation();
-    let identities_repository = identities.repository();
+    let identities_repository = identities.change_history_repository();
     let credentials = identities.credentials();
     let credentials_service = identities.credentials_server();
 
@@ -99,7 +99,7 @@ async fn full_flow_twoway(ctx: &mut Context) -> Result<()> {
     let secure_channels = secure_channels();
     let identities = secure_channels.identities();
     let identities_creation = identities.identities_creation();
-    let identities_repository = identities.repository();
+    let identities_repository = identities.change_history_repository();
     let credentials = identities.credentials();
     let credentials_service = identities.credentials_server();
 
@@ -210,7 +210,7 @@ async fn access_control(ctx: &mut Context) -> Result<()> {
     let secure_channels = secure_channels();
     let identities = secure_channels.identities();
     let identities_creation = identities.identities_creation();
-    let identities_repository = identities.repository();
+    let identities_repository = identities.change_history_repository();
     let credentials = identities.credentials();
     let credentials_service = identities.credentials_server();
 

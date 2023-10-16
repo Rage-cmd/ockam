@@ -1,8 +1,6 @@
 CREATE TABLE identity (
   identifier TEXT NOT NULL UNIQUE,
   change_history BLOB NOT NULL,
-  name TEXT UNIQUE,
-  is_default INTEGER
 );
 
 CREATE TABLE identity_enrollment (
@@ -37,6 +35,12 @@ CREATE TABLE tcp_outlet (
   worker_addr TEXT NOT NULL,
   alias TEXT NOT NULL,
   payload TEXT
+);
+
+CREATE TABLE named_identity (
+  identifier TEXT NOT NULL UNIQUE,
+  name TEXT UNIQUE,
+  is_default INTEGER DEFAULT 0
 );
 
 CREATE TABLE node (

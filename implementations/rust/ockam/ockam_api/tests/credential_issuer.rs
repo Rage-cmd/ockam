@@ -7,7 +7,9 @@ use ockam::identity::{
     SecureChannels,
 };
 use ockam::route;
-use ockam_api::bootstrapped_identities_store::{BootstrapedIdentityStore, PreTrustedIdentities};
+use ockam_api::bootstrapped_identities_store::{
+    BootstrapedIdentityAttributesStore, PreTrustedIdentities,
+};
 use ockam_core::api::Request;
 use ockam_core::compat::collections::{BTreeMap, HashMap};
 use ockam_core::compat::sync::Arc;
@@ -37,16 +39,16 @@ async fn credential(ctx: &mut Context) -> Result<()> {
         ),
     )]);
 
-    let bootstrapped = BootstrapedIdentityStore::new(
+    let bootstrapped = BootstrapedIdentityAttributesStore::new(
         Arc::new(PreTrustedIdentities::from(pre_trusted)),
-        identities.repository(),
+        identities.identity_attributes_repository(),
     );
 
     // Now recreate the identities services with the previous vault
     // (so that the authority can verify its signature)
     // and the repository containing the trusted identities
     let identities = Identities::builder()
-        .with_identities_repository(Arc::new(bootstrapped))
+        .with_identity_attributes_repository(Arc::new(bootstrapped))
         .with_vault(identities.vault())
         .with_purpose_keys_repository(identities.purpose_keys_repository())
         .build();
@@ -69,7 +71,7 @@ async fn credential(ctx: &mut Context) -> Result<()> {
     ctx.flow_controls()
         .add_consumer(auth_worker_addr.clone(), &sc_flow_control_id);
     let auth = CredentialsIssuer::new(
-        identities.repository(),
+        identities.identity_attributes_repository(),
         identities.credentials(),
         auth_identity.identifier(),
         "project42".into(),
